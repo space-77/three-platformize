@@ -3,7 +3,7 @@ import { ConvexHull } from '../math/ConvexHull.js';
 
 class ConvexGeometry extends BufferGeometry {
 
-	constructor( points ) {
+	constructor( points = [] ) {
 
 		super();
 
@@ -11,12 +11,6 @@ class ConvexGeometry extends BufferGeometry {
 
 		const vertices = [];
 		const normals = [];
-
-		if ( ConvexHull === undefined ) {
-
-			console.error( 'THREE.ConvexBufferGeometry: ConvexBufferGeometry relies on ConvexHull' );
-
-		}
 
 		const convexHull = new ConvexHull().setFromPoints( points );
 

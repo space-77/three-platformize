@@ -1,0 +1,27 @@
+import NodeMaterial, { addNodeMaterial } from './NodeMaterial.js';
+import { LineBasicMaterial } from '../../../../build/three.module.js';
+
+const defaultValues = new LineBasicMaterial();
+
+class LineBasicNodeMaterial extends NodeMaterial {
+
+	constructor( parameters ) {
+
+		super();
+
+		this.isLineBasicNodeMaterial = true;
+
+		this.lights = false;
+		this.normals = false;
+
+		this.setDefaultValues( defaultValues );
+
+		this.setValues( parameters );
+
+	}
+
+}
+
+addNodeMaterial( 'LineBasicNodeMaterial', LineBasicNodeMaterial );
+
+export { LineBasicNodeMaterial as default };

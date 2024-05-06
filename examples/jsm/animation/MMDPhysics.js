@@ -1,4 +1,4 @@
-import { Vector3, Matrix4, Quaternion, Euler, Bone, Object3D, MeshBasicMaterial, Color, Mesh, BoxGeometry, SphereGeometry, CylinderGeometry } from '../../../build/three.module.js';
+import { Vector3, Quaternion, Matrix4, Euler, Bone, Object3D, MeshBasicMaterial, Color, Mesh, CapsuleGeometry, BoxGeometry, SphereGeometry } from '../../../build/three.module.js';
 
 /**
  * Dependencies
@@ -196,9 +196,9 @@ class MMDPhysics {
 		// mesh's default world transform as position(0, 0, 0),
 		// quaternion(0, 0, 0, 1) and scale(0, 0, 0)
 
-		let parent = mesh.parent;
+		const parent = mesh.parent;
 
-		if ( parent !== null ) parent = null;
+		if ( parent !== null ) mesh.parent = null;
 
 		const currentPosition = manager.allocThreeVector3();
 		const currentQuaternion = manager.allocThreeQuaternion();
@@ -881,7 +881,7 @@ class RigidBody {
 					return new Ammo.btCapsuleShape( p.width, p.height );
 
 				default:
-					throw 'unknown shape type ' + p.shapeType;
+					throw new Error( 'unknown shape type ' + p.shapeType );
 
 			}
 
@@ -1190,7 +1190,6 @@ class Constraint {
 
 			for ( let i = 0; i < 6; i ++ ) {
 
-				// this parameter is from http://www20.atpages.jp/katwat/three.js_r58/examples/mytest37/mmd.three.js
 				constraint.setParam( 2, 0.475, i );
 
 			}
@@ -1280,6 +1279,31 @@ class MMDPhysicsHelper extends Object3D {
 
 	}
 
+
+	/**
+	 * Frees the GPU-related resources allocated by this instance. Call this method whenever this instance is no longer used in your app.
+	 */
+	dispose() {
+
+		const materials = this.materials;
+		const children = this.children;
+
+		for ( let i = 0; i < materials.length; i ++ ) {
+
+			materials[ i ].dispose();
+
+		}
+
+		for ( let i = 0; i < children.length; i ++ ) {
+
+			const child = children[ i ];
+
+			if ( child.isMesh ) child.geometry.dispose();
+
+		}
+
+	}
+
 	/**
 	 * Updates Rigid Bodies visualization.
 	 */
@@ -1346,32 +1370,12 @@ class MMDPhysicsHelper extends Object3D {
 					return new BoxGeometry( param.width * 2, param.height * 2, param.depth * 2, 8, 8, 8 );
 
 				case 2:
-					return new createCapsuleGeometry( param.width, param.height, 16, 8 );
+					return new CapsuleGeometry( param.width, param.height, 8, 16 );
 
 				default:
 					return null;
 
 			}
-
-		}
-
-		// copy from http://www20.atpages.jp/katwat/three.js_r58/examples/mytest37/mytest37.js?ver=20160815
-		function createCapsuleGeometry( radius, cylinderHeight, segmentsRadius, segmentsHeight ) {
-
-			var geometry = new CylinderGeometry( radius, radius, cylinderHeight, segmentsRadius, segmentsHeight, true );
-			var upperSphere = new Mesh( new SphereGeometry( radius, segmentsRadius, segmentsHeight, 0, Math.PI * 2, 0, Math.PI / 2 ) );
-			var lowerSphere = new Mesh( new SphereGeometry( radius, segmentsRadius, segmentsHeight, 0, Math.PI * 2, Math.PI / 2, Math.PI / 2 ) );
-
-			upperSphere.position.set( 0, cylinderHeight / 2, 0 );
-			lowerSphere.position.set( 0, - cylinderHeight / 2, 0 );
-
-			upperSphere.updateMatrix();
-			lowerSphere.updateMatrix();
-
-			geometry.merge( upperSphere.geometry, upperSphere.matrix );
-			geometry.merge( lowerSphere.geometry, lowerSphere.matrix );
-
-			return geometry;
 
 		}
 

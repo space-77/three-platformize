@@ -1,6 +1,5 @@
 import { Vector3, BufferAttribute, BufferGeometry } from '../../../build/three.module.js';
 import * as BufferGeometryUtils from '../utils/BufferGeometryUtils.js';
-import { mergeVertices } from '../utils/BufferGeometryUtils.js';
 
 const _A = new Vector3();
 const _B = new Vector3();
@@ -150,13 +149,6 @@ class EdgeSplitModifier {
 
 		}
 
-		if ( geometry.isGeometry === true ) {
-
-			console.error( 'THREE.EdgeSplitModifier no longer supports THREE.Geometry. Use BufferGeometry instead.' );
-			return;
-
-		}
-
 		let hadNormals = false;
 		let oldNormals = null;
 
@@ -178,13 +170,7 @@ class EdgeSplitModifier {
 
 		if ( geometry.index == null ) {
 
-			if ( BufferGeometryUtils === undefined ) {
-
-				throw 'THREE.EdgeSplitModifier relies on BufferGeometryUtils';
-
-			}
-
-			geometry = mergeVertices( geometry );
+			geometry = BufferGeometryUtils.mergeVertices( geometry );
 
 		}
 

@@ -1,5 +1,5 @@
-import { $document, $window } from '../../../build/three.module.js';
-import { EventDispatcher, MOUSE, Vector3, Vector2, Quaternion } from '../../../build/three.module.js';
+import { $window } from '../../../build/three.module.js';
+import { EventDispatcher, MOUSE, Vector3, Vector2, Quaternion, MathUtils } from '../../../build/three.module.js';
 
 const _changeEvent = { type: 'change' };
 const _startEvent = { type: 'start' };
@@ -10,9 +10,6 @@ class TrackballControls extends EventDispatcher {
 	constructor( object, domElement ) {
 
 		super();
-
-		if ( domElement === undefined ) console.warn( 'THREE.TrackballControls: The second parameter "domElement" is now mandatory.' );
-		if ( domElement === $document ) console.error( 'THREE.TrackballControls: "document" should not be used as the target "domElement". Please use "renderer.domElement" instead.' );
 
 		const scope = this;
 		const STATE = { NONE: - 1, ROTATE: 0, ZOOM: 1, PAN: 2, TOUCH_ROTATE: 3, TOUCH_ZOOM_PAN: 4 };
@@ -40,6 +37,9 @@ class TrackballControls extends EventDispatcher {
 
 		this.minDistance = 0;
 		this.maxDistance = Infinity;
+
+		this.minZoom = 0;
+		this.maxZoom = Infinity;
 
 		this.keys = [ 'KeyA' /*A*/, 'KeyS' /*S*/, 'KeyD' /*D*/ ];
 
@@ -203,8 +203,13 @@ class TrackballControls extends EventDispatcher {
 
 				} else if ( scope.object.isOrthographicCamera ) {
 
-					scope.object.zoom *= factor;
-					scope.object.updateProjectionMatrix();
+					scope.object.zoom = MathUtils.clamp( scope.object.zoom / factor, scope.minZoom, scope.maxZoom );
+
+					if ( lastZoom !== scope.object.zoom ) {
+
+						scope.object.updateProjectionMatrix();
+
+					}
 
 				} else {
 
@@ -224,8 +229,13 @@ class TrackballControls extends EventDispatcher {
 
 					} else if ( scope.object.isOrthographicCamera ) {
 
-						scope.object.zoom /= factor;
-						scope.object.updateProjectionMatrix();
+						scope.object.zoom = MathUtils.clamp( scope.object.zoom / factor, scope.minZoom, scope.maxZoom );
+
+						if ( lastZoom !== scope.object.zoom ) {
+
+							scope.object.updateProjectionMatrix();
+
+						}
 
 					} else {
 
@@ -536,9 +546,6 @@ class TrackballControls extends EventDispatcher {
 						_state = STATE.PAN;
 						break;
 
-					default:
-						_state = STATE.NONE;
-
 				}
 
 			}
@@ -701,8 +708,20 @@ class TrackballControls extends EventDispatcher {
 
 				case 2:
 					_state = STATE.TOUCH_ZOOM_PAN;
-					_moveCurr.copy( getMouseOnCircle( event.pageX - _movePrev.pageX, event.pageY - _movePrev.pageY ) );
-					_movePrev.copy( _moveCurr );
+
+					for ( let i = 0; i < _pointers.length; i ++ ) {
+
+						if ( _pointers[ i ].pointerId !== event.pointerId ) {
+
+							const position = _pointerPositions[ _pointers[ i ].pointerId ];
+							_moveCurr.copy( getMouseOnCircle( position.x, position.y ) );
+							_movePrev.copy( _moveCurr );
+							break;
+
+						}
+
+					}
+
 					break;
 
 			}

@@ -65,6 +65,8 @@ class SessionLightProbe {
 
 				textureProperties.__webglTexture = cubeMap;
 
+				this.xrLight.environment.needsPMREMUpdate = true;
+
 			}
 
 		}
@@ -141,7 +143,7 @@ class XREstimatedLight extends Group {
 		this.directionalLight.intensity = 0;
 		this.add( this.directionalLight );
 
-		// Will be set to a cube map in the SessionLightProbe is environment estimation is
+		// Will be set to a cube map in the SessionLightProbe if environment estimation is
 		// available and requested.
 		this.environment = null;
 

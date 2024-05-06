@@ -1,4 +1,4 @@
-import { Color, UniformsUtils, ShaderMaterial, AdditiveBlending, WebGLRenderTarget, LinearFilter, RGBAFormat } from '../../../build/three.module.js';
+import { Color, UniformsUtils, ShaderMaterial, AdditiveBlending, WebGLRenderTarget, HalfFloatType } from '../../../build/three.module.js';
 import { Pass, FullScreenQuad } from './Pass.js';
 import { CopyShader } from '../shaders/CopyShader.js';
 
@@ -29,8 +29,6 @@ class SSAARenderPass extends Pass {
 		this.clearAlpha = ( clearAlpha !== undefined ) ? clearAlpha : 0;
 		this._oldClearColor = new Color();
 
-		if ( CopyShader === undefined ) console.error( 'THREE.SSAARenderPass relies on CopyShader' );
-
 		const copyShader = CopyShader;
 		this.copyUniforms = UniformsUtils.clone( copyShader.uniforms );
 
@@ -38,11 +36,11 @@ class SSAARenderPass extends Pass {
 			uniforms: this.copyUniforms,
 			vertexShader: copyShader.vertexShader,
 			fragmentShader: copyShader.fragmentShader,
-			premultipliedAlpha: true,
 			transparent: true,
-			blending: AdditiveBlending,
 			depthTest: false,
-			depthWrite: false
+			depthWrite: false,
+			premultipliedAlpha: true,
+			blending: AdditiveBlending
 		} );
 
 		this.fsQuad = new FullScreenQuad( this.copyMaterial );
@@ -58,6 +56,10 @@ class SSAARenderPass extends Pass {
 
 		}
 
+		this.copyMaterial.dispose();
+
+		this.fsQuad.dispose();
+
 	}
 
 	setSize( width, height ) {
@@ -70,7 +72,7 @@ class SSAARenderPass extends Pass {
 
 		if ( ! this.sampleRenderTarget ) {
 
-			this.sampleRenderTarget = new WebGLRenderTarget( readBuffer.width, readBuffer.height, { minFilter: LinearFilter, magFilter: LinearFilter, format: RGBAFormat } );
+			this.sampleRenderTarget = new WebGLRenderTarget( readBuffer.width, readBuffer.height, { type: HalfFloatType } );
 			this.sampleRenderTarget.texture.name = 'SSAARenderPass.sample';
 
 		}

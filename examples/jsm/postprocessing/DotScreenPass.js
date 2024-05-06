@@ -8,9 +8,7 @@ class DotScreenPass extends Pass {
 
 		super();
 
-		if ( DotScreenShader === undefined ) console.error( 'THREE.DotScreenPass relies on DotScreenShader' );
-
-		var shader = DotScreenShader;
+		const shader = DotScreenShader;
 
 		this.uniforms = UniformsUtils.clone( shader.uniforms );
 
@@ -20,6 +18,7 @@ class DotScreenPass extends Pass {
 
 		this.material = new ShaderMaterial( {
 
+			name: shader.name,
 			uniforms: this.uniforms,
 			vertexShader: shader.vertexShader,
 			fragmentShader: shader.fragmentShader
@@ -47,6 +46,14 @@ class DotScreenPass extends Pass {
 			this.fsQuad.render( renderer );
 
 		}
+
+	}
+
+	dispose() {
+
+		this.material.dispose();
+
+		this.fsQuad.dispose();
 
 	}
 

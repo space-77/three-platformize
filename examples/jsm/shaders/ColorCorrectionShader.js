@@ -6,6 +6,8 @@ import { Vector3 } from '../../../build/three.module.js';
 
 const ColorCorrectionShader = {
 
+	name: 'ColorCorrectionShader',
+
 	uniforms: {
 
 		'tDiffuse': { value: null },

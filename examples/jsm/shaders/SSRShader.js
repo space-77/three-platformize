@@ -5,7 +5,9 @@ import { Vector2, Matrix4 } from '../../../build/three.module.js';
  * https://lettier.github.io/3d-game-shaders-for-beginners/screen-space-reflection.html
  */
 
-var SSRShader = {
+const SSRShader = {
+
+	name: 'SSRShader',
 
 	defines: {
 		MAX_STEP: 0,
@@ -173,7 +175,7 @@ var SSRShader = {
 				vec3 vP=getViewPosition( uv, d, cW );
 
 				#ifdef PERSPECTIVE_CAMERA
-					// https://www.comp.nus.edu.sg/~lowkl/publications/lowk_persp_interp_techrep.pdf
+					// https://comp.nus.edu.sg/~lowkl/publications/lowk_persp_interp_techrep.pdf
 					float recipVPZ=1./viewPosition.z;
 					float viewReflectRayZ=1./(recipVPZ+s*(1./d1viewPosition.z-recipVPZ));
 				#else
@@ -229,7 +231,9 @@ var SSRShader = {
 
 };
 
-var SSRDepthShader = {
+const SSRDepthShader = {
+
+	name: 'SSRDepthShader',
 
 	defines: {
 		'PERSPECTIVE_CAMERA': 1
@@ -296,7 +300,9 @@ var SSRDepthShader = {
 
 };
 
-var SSRBlurShader = {
+const SSRBlurShader = {
+
+	name: 'SSRBlurShader',
 
 	uniforms: {
 

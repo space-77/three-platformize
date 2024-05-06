@@ -8,6 +8,8 @@ import { Vector2 } from '../../../build/three.module.js';
 
 const SMAAEdgesShader = {
 
+	name: 'SMAAEdgesShader',
+
 	defines: {
 
 		'SMAA_THRESHOLD': '0.1'
@@ -112,6 +114,8 @@ const SMAAEdgesShader = {
 };
 
 const SMAAWeightsShader = {
+
+	name: 'SMAAWeightsShader',
 
 	defines: {
 
@@ -366,6 +370,8 @@ const SMAAWeightsShader = {
 };
 
 const SMAABlendShader = {
+
+	name: 'SMAABlendShader',
 
 	uniforms: {
 

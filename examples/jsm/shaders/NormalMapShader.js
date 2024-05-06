@@ -7,6 +7,8 @@ import { Vector2 } from '../../../build/three.module.js';
 
 const NormalMapShader = {
 
+	name: 'NormalMapShader',
+
 	uniforms: {
 
 		'heightMap': { value: null },

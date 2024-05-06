@@ -7,6 +7,8 @@ import { Color } from '../../../build/three.module.js';
 
 const LuminosityHighPassShader = {
 
+	name: 'LuminosityHighPassShader',
+
 	shaderID: 'luminosityHighPass',
 
 	uniforms: {

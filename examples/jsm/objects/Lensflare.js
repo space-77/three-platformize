@@ -1,10 +1,12 @@
-import { Mesh, MeshBasicMaterial, Vector3, DataTexture, RGBFormat, NearestFilter, ClampToEdgeWrapping, RawShaderMaterial, Color, Vector2, AdditiveBlending, Box2, Vector4, BufferGeometry, InterleavedBuffer, InterleavedBufferAttribute } from '../../../build/three.module.js';
+import { BufferGeometry, InterleavedBuffer, InterleavedBufferAttribute, Mesh, MeshBasicMaterial, Vector3, FramebufferTexture, RawShaderMaterial, Color, Vector2, AdditiveBlending, Box2, Vector4, UnsignedByteType } from '../../../build/three.module.js';
 
 class Lensflare extends Mesh {
 
 	constructor() {
 
 		super( Lensflare.Geometry, new MeshBasicMaterial( { opacity: 0, transparent: true } ) );
+
+		this.isLensflare = true;
 
 		this.type = 'Lensflare';
 		this.frustumCulled = false;
@@ -17,17 +19,10 @@ class Lensflare extends Mesh {
 
 		// textures
 
-		const tempMap = new DataTexture( new Uint8Array( 16 * 16 * 3 ), 16, 16, RGBFormat );
-		tempMap.minFilter = NearestFilter;
-		tempMap.magFilter = NearestFilter;
-		tempMap.wrapS = ClampToEdgeWrapping;
-		tempMap.wrapT = ClampToEdgeWrapping;
+		const tempMap = new FramebufferTexture( 16, 16 );
+		const occlusionMap = new FramebufferTexture( 16, 16 );
 
-		const occlusionMap = new DataTexture( new Uint8Array( 16 * 16 * 3 ), 16, 16, RGBFormat );
-		occlusionMap.minFilter = NearestFilter;
-		occlusionMap.magFilter = NearestFilter;
-		occlusionMap.wrapS = ClampToEdgeWrapping;
-		occlusionMap.wrapT = ClampToEdgeWrapping;
+		let currentType = UnsignedByteType;
 
 		// material
 
@@ -122,6 +117,7 @@ class Lensflare extends Mesh {
 		const shader = LensflareElement.Shader;
 
 		const material2 = new RawShaderMaterial( {
+			name: shader.name,
 			uniforms: {
 				'map': { value: null },
 				'occlusionMap': { value: occlusionMap },
@@ -154,6 +150,20 @@ class Lensflare extends Mesh {
 		this.onBeforeRender = function ( renderer, scene, camera ) {
 
 			renderer.getCurrentViewport( viewport );
+
+			const renderTarget = renderer.getRenderTarget();
+			const type = ( renderTarget !== null ) ? renderTarget.texture.type : UnsignedByteType;
+
+			if ( currentType !== type ) {
+
+				tempMap.dispose();
+				occlusionMap.dispose();
+
+				tempMap.type = occlusionMap.type = type;
+
+				currentType = type;
+
+			}
 
 			const invAspect = viewport.w / viewport.z;
 			const halfViewportWidth = viewport.z / 2.0;
@@ -259,8 +269,6 @@ class Lensflare extends Mesh {
 
 }
 
-Lensflare.prototype.isLensflare = true;
-
 //
 
 class LensflareElement {
@@ -277,6 +285,8 @@ class LensflareElement {
 }
 
 LensflareElement.Shader = {
+
+	name: 'LensflareElementShader',
 
 	uniforms: {
 

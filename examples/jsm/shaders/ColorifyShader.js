@@ -6,6 +6,8 @@ import { Color } from '../../../build/three.module.js';
 
 const ColorifyShader = {
 
+	name: 'ColorifyShader',
+
 	uniforms: {
 
 		'tDiffuse': { value: null },

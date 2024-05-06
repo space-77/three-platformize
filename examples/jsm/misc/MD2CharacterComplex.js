@@ -1,4 +1,4 @@
-import { Object3D, Box3, MathUtils, MeshLambertMaterial, TextureLoader, UVMapping, sRGBEncoding } from '../../../build/three.module.js';
+import { Object3D, Box3, MathUtils, MeshLambertMaterial, TextureLoader, UVMapping, SRGBColorSpace } from '../../../build/three.module.js';
 import { MD2Loader } from '../loaders/MD2Loader.js';
 import { MorphBlendMesh } from './MorphBlendMesh.js';
 
@@ -149,7 +149,7 @@ class MD2CharacterComplex {
 				textures[ i ] = textureLoader.load( baseUrl + textureUrls[ i ], checkLoadingComplete );
 				textures[ i ].mapping = UVMapping;
 				textures[ i ].name = textureUrls[ i ];
-				textures[ i ].encoding = sRGBEncoding;
+				textures[ i ].colorSpace = SRGBColorSpace;
 
 			}
 

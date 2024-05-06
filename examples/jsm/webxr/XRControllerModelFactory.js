@@ -195,11 +195,12 @@ function addAssetSceneToControllerModel( controllerModel, scene ) {
 
 class XRControllerModelFactory {
 
-	constructor( gltfLoader = null ) {
+	constructor( gltfLoader = null, onLoad = null ) {
 
 		this.gltfLoader = gltfLoader;
 		this.path = DEFAULT_PROFILES_PATH;
 		this._assetCache = {};
+		this.onLoad = onLoad;
 
 		// If a GLTFLoader wasn't supplied to the constructor create a new one.
 		if ( ! this.gltfLoader ) {
@@ -207,6 +208,14 @@ class XRControllerModelFactory {
 			this.gltfLoader = new GLTFLoader();
 
 		}
+
+	}
+
+	setPath( path ) {
+
+		this.path = path;
+
+		return this;
 
 	}
 
@@ -236,6 +245,8 @@ class XRControllerModelFactory {
 
 					addAssetSceneToControllerModel( controllerModel, scene );
 
+					if ( this.onLoad ) this.onLoad( scene );
+
 				} else {
 
 					if ( ! this.gltfLoader ) {
@@ -252,6 +263,8 @@ class XRControllerModelFactory {
 						scene = asset.scene.clone();
 
 						addAssetSceneToControllerModel( controllerModel, scene );
+
+						if ( this.onLoad ) this.onLoad( scene );
 
 					},
 					null,

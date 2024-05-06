@@ -1,12 +1,10 @@
-import { $DOMParser } from '../../../build/three.module.js';
-import { Loader, FileLoader, Group, MeshPhongMaterial, Float32BufferAttribute, Color, BufferGeometry, Mesh, LoaderUtils } from '../../../build/three.module.js';
-import { unzipSync } from '../libs/fflate.module.js';
+import { $TextDecoder, $DOMParser } from '../../../build/three.module.js';
+import { Loader, FileLoader, Group, MeshPhongMaterial, Float32BufferAttribute, Color, BufferGeometry, Mesh } from '../../../build/three.module.js';
+import * as fflate from '../libs/fflate.module.js';
 
 /**
  * Description: Early release of an AMF Loader following the pattern of the
  * example loaders in the three.js project.
- *
- * More information about the AMF format: http://amf.wikispaces.com
  *
  * Usage:
  *	const loader = new AMFLoader();
@@ -79,7 +77,7 @@ class AMFLoader extends Loader {
 
 				try {
 
-					zip = unzipSync( new Uint8Array( data ) ); // eslint-disable-line no-undef
+					zip = fflate.unzipSync( new Uint8Array( data ) );
 
 				} catch ( e ) {
 
@@ -94,7 +92,7 @@ class AMFLoader extends Loader {
 
 				for ( file in zip ) {
 
-					if ( file.toLowerCase().substr( - 4 ) === '.amf' ) {
+					if ( file.toLowerCase().slice( - 4 ) === '.amf' ) {
 
 						break;
 
@@ -107,7 +105,7 @@ class AMFLoader extends Loader {
 
 			}
 
-			const fileText = LoaderUtils.decodeText( view );
+			const fileText = new $TextDecoder().decode( view );
 			const xmlData = new $DOMParser().parseFromString( fileText, 'application/xml' );
 
 			if ( xmlData.documentElement.nodeName.toLowerCase() !== 'amf' ) {
@@ -426,7 +424,11 @@ class AMFLoader extends Loader {
 		}
 
 		const sceneObject = new Group();
-		const defaultMaterial = new MeshPhongMaterial( { color: 0xaaaaff, flatShading: true } );
+		const defaultMaterial = new MeshPhongMaterial( {
+			name: Loader.DEFAULT_MATERIAL_NAME,
+			color: 0xaaaaff,
+			flatShading: true
+		} );
 
 		sceneObject.name = amfName;
 		sceneObject.userData.author = amfAuthor;

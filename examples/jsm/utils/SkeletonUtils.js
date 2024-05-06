@@ -1,4 +1,4 @@
-import { Vector3, Quaternion, Matrix4, AnimationMixer, VectorKeyframeTrack, QuaternionKeyframeTrack, AnimationClip, SkeletonHelper, Vector2, Euler } from '../../../build/three.module.js';
+import { Vector3, Quaternion, Matrix4, AnimationMixer, VectorKeyframeTrack, QuaternionKeyframeTrack, AnimationClip, SkeletonHelper } from '../../../build/three.module.js';
 
 function retarget( target, source, options = {} ) {
 
@@ -75,7 +75,7 @@ function retarget( target, source, options = {} ) {
 			bone = bones[ i ];
 			name = options.names[ bone.name ] || bone.name;
 
-			if ( options.offsets && options.offsets[ name ] ) {
+			if ( options.offsets[ name ] ) {
 
 				bone.matrix.multiply( options.offsets[ name ] );
 
@@ -190,7 +190,8 @@ function retarget( target, source, options = {} ) {
 function retargetClip( target, source, clip, options = {} ) {
 
 	options.useFirstFramePosition = options.useFirstFramePosition !== undefined ? options.useFirstFramePosition : false;
-	options.fps = options.fps !== undefined ? options.fps : 30;
+	// Calculate the fps from the source clip based on the track with the most frames, unless fps is already provided.
+	options.fps = options.fps !== undefined ? options.fps : ( Math.max( ...clip.tracks.map( track => track.times.length ) ) / clip.duration );
 	options.names = options.names || [];
 
 	if ( ! source.isObject3D ) {
@@ -200,7 +201,7 @@ function retargetClip( target, source, clip, options = {} ) {
 	}
 
 	const numFrames = Math.round( clip.duration * ( options.fps / 1000 ) * 1000 ),
-		delta = 1 / options.fps,
+		delta = clip.duration / ( numFrames - 1 ),
 		convertedTracks = [],
 		mixer = new AnimationMixer( source ),
 		bones = getBones( target.skeleton ),
@@ -277,7 +278,17 @@ function retargetClip( target, source, clip, options = {} ) {
 
 		}
 
-		mixer.update( delta );
+		if ( i === numFrames - 2 ) {
+
+			// last mixer update before final loop iteration
+			// make sure we do not go over or equal to clip duration
+			mixer.update( delta - 0.0000001 );
+
+		} else {
+
+			mixer.update( delta );
+
+		}
 
 		source.updateMatrixWorld();
 
@@ -312,206 +323,6 @@ function retargetClip( target, source, clip, options = {} ) {
 	mixer.uncacheAction( clip );
 
 	return new AnimationClip( clip.name, - 1, convertedTracks );
-
-}
-
-function getHelperFromSkeleton( skeleton ) {
-
-	const source = new SkeletonHelper( skeleton.bones[ 0 ] );
-	source.skeleton = skeleton;
-
-	return source;
-
-}
-
-function getSkeletonOffsets( target, source, options = {} ) {
-
-	const targetParentPos = new Vector3(),
-		targetPos = new Vector3(),
-		sourceParentPos = new Vector3(),
-		sourcePos = new Vector3(),
-		targetDir = new Vector2(),
-		sourceDir = new Vector2();
-
-	options.hip = options.hip !== undefined ? options.hip : 'hip';
-	options.names = options.names || {};
-
-	if ( ! source.isObject3D ) {
-
-		source = getHelperFromSkeleton( source );
-
-	}
-
-	const nameKeys = Object.keys( options.names ),
-		nameValues = Object.values( options.names ),
-		sourceBones = source.isObject3D ? source.skeleton.bones : getBones( source ),
-		bones = target.isObject3D ? target.skeleton.bones : getBones( target ),
-		offsets = [];
-
-	let bone, boneTo,
-		name, i;
-
-	target.skeleton.pose();
-
-	for ( i = 0; i < bones.length; ++ i ) {
-
-		bone = bones[ i ];
-		name = options.names[ bone.name ] || bone.name;
-
-		boneTo = getBoneByName( name, sourceBones );
-
-		if ( boneTo && name !== options.hip ) {
-
-			const boneParent = getNearestBone( bone.parent, nameKeys ),
-				boneToParent = getNearestBone( boneTo.parent, nameValues );
-
-			boneParent.updateMatrixWorld();
-			boneToParent.updateMatrixWorld();
-
-			targetParentPos.setFromMatrixPosition( boneParent.matrixWorld );
-			targetPos.setFromMatrixPosition( bone.matrixWorld );
-
-			sourceParentPos.setFromMatrixPosition( boneToParent.matrixWorld );
-			sourcePos.setFromMatrixPosition( boneTo.matrixWorld );
-
-			targetDir.subVectors(
-				new Vector2( targetPos.x, targetPos.y ),
-				new Vector2( targetParentPos.x, targetParentPos.y )
-			).normalize();
-
-			sourceDir.subVectors(
-				new Vector2( sourcePos.x, sourcePos.y ),
-				new Vector2( sourceParentPos.x, sourceParentPos.y )
-			).normalize();
-
-			const laterialAngle = targetDir.angle() - sourceDir.angle();
-
-			const offset = new Matrix4().makeRotationFromEuler(
-				new Euler(
-					0,
-					0,
-					laterialAngle
-				)
-			);
-
-			bone.matrix.multiply( offset );
-
-			bone.matrix.decompose( bone.position, bone.quaternion, bone.scale );
-
-			bone.updateMatrixWorld();
-
-			offsets[ name ] = offset;
-
-		}
-
-	}
-
-	return offsets;
-
-}
-
-function renameBones( skeleton, names ) {
-
-	const bones = getBones( skeleton );
-
-	for ( let i = 0; i < bones.length; ++ i ) {
-
-		const bone = bones[ i ];
-
-		if ( names[ bone.name ] ) {
-
-			bone.name = names[ bone.name ];
-
-		}
-
-	}
-
-	return this;
-
-}
-
-function getBones( skeleton ) {
-
-	return Array.isArray( skeleton ) ? skeleton : skeleton.bones;
-
-}
-
-function getBoneByName( name, skeleton ) {
-
-	for ( let i = 0, bones = getBones( skeleton ); i < bones.length; i ++ ) {
-
-		if ( name === bones[ i ].name )
-
-			return bones[ i ];
-
-	}
-
-}
-
-function getNearestBone( bone, names ) {
-
-	while ( bone.isBone ) {
-
-		if ( names.indexOf( bone.name ) !== - 1 ) {
-
-			return bone;
-
-		}
-
-		bone = bone.parent;
-
-	}
-
-}
-
-function findBoneTrackData( name, tracks ) {
-
-	const regexp = /\[(.*)\]\.(.*)/,
-		result = { name: name };
-
-	for ( let i = 0; i < tracks.length; ++ i ) {
-
-		// 1 is track name
-		// 2 is track type
-		const trackData = regexp.exec( tracks[ i ].name );
-
-		if ( trackData && name === trackData[ 1 ] ) {
-
-			result[ trackData[ 2 ] ] = i;
-
-		}
-
-	}
-
-	return result;
-
-}
-
-function getEqualsBonesNames( skeleton, targetSkeleton ) {
-
-	const sourceBones = getBones( skeleton ),
-		targetBones = getBones( targetSkeleton ),
-		bones = [];
-
-	search : for ( let i = 0; i < sourceBones.length; i ++ ) {
-
-		const boneName = sourceBones[ i ].name;
-
-		for ( let j = 0; j < targetBones.length; j ++ ) {
-
-			if ( boneName === targetBones[ j ].name ) {
-
-				bones.push( boneName );
-
-				continue search;
-
-			}
-
-		}
-
-	}
-
-	return bones;
 
 }
 
@@ -554,8 +365,35 @@ function clone( source ) {
 
 }
 
+// internal helper
+
+function getBoneByName( name, skeleton ) {
+
+	for ( let i = 0, bones = getBones( skeleton ); i < bones.length; i ++ ) {
+
+		if ( name === bones[ i ].name )
+
+			return bones[ i ];
+
+	}
+
+}
+
+function getBones( skeleton ) {
+
+	return Array.isArray( skeleton ) ? skeleton : skeleton.bones;
+
+}
 
 
+function getHelperFromSkeleton( skeleton ) {
+
+	const source = new SkeletonHelper( skeleton.bones[ 0 ] );
+	source.skeleton = skeleton;
+
+	return source;
+
+}
 
 function parallelTraverse( a, b, callback ) {
 
@@ -569,4 +407,4 @@ function parallelTraverse( a, b, callback ) {
 
 }
 
-export { clone, findBoneTrackData, getBoneByName, getBones, getEqualsBonesNames, getHelperFromSkeleton, getNearestBone, getSkeletonOffsets, renameBones, retarget, retargetClip };
+export { clone, retarget, retargetClip };

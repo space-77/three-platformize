@@ -1,11 +1,11 @@
 import { $document } from '../../../build/three.module.js';
 
-var interval = null;
-var result = null;
+let interval = null;
+let result = null;
 
 function initJank() {
 
-	var button = $document.getElementById( 'button' );
+	const button = $document.getElementById( 'button' );
 	button.addEventListener( 'click', function () {
 
 		if ( interval === null ) {
@@ -32,9 +32,9 @@ function initJank() {
 
 function jank() {
 
-	var number = 0;
+	let number = 0;
 
-	for ( var i = 0; i < 10000000; i ++ ) {
+	for ( let i = 0; i < 10000000; i ++ ) {
 
 		number += Math.random();
 
@@ -44,4 +44,4 @@ function jank() {
 
 }
 
-export default initJank;
+export { initJank as default };

@@ -1,5 +1,5 @@
 import { $document } from '../../../build/three.module.js';
-import { Texture, MeshBasicMaterial, DoubleSide, PlaneGeometry, Mesh } from '../../../build/three.module.js';
+import * as THREE from '../../../build/three.module.js';
 
 function createText( message, height ) {
 
@@ -18,20 +18,20 @@ function createText( message, height ) {
 	context.fillStyle = '#ffffff';
 	context.fillText( message, textWidth / 2, textHeight / 2 );
 
-	const texture = new Texture( canvas );
+	const texture = new THREE.Texture( canvas );
 	texture.needsUpdate = true;
-	//var spriteAlignment = new THREE.Vector2(0,0) ;
-	const material = new MeshBasicMaterial( {
+
+	const material = new THREE.MeshBasicMaterial( {
 		color: 0xffffff,
-		side: DoubleSide,
+		side: THREE.DoubleSide,
 		map: texture,
 		transparent: true,
 	} );
-	const geometry = new PlaneGeometry(
+	const geometry = new THREE.PlaneGeometry(
 		( height * textWidth ) / textHeight,
 		height
 	);
-	const plane = new Mesh( geometry, material );
+	const plane = new THREE.Mesh( geometry, material );
 	return plane;
 
 }

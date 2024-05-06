@@ -1,29 +1,22 @@
-import { Camera } from '../../../../src/Three';
+import { ShaderNodeObject } from "../shadernode/ShaderNode.js";
+import Object3DNode from "./Object3DNode.js";
 
-import { NodeFrame } from '../core/NodeFrame';
-import { TempNode } from '../core/TempNode';
-import { FunctionNode } from '../core/FunctionNode';
-import { FloatNode } from '../inputs/FloatNode';
+export default class CameraNode extends Object3DNode {
+    constructor(scope?: string);
 
-export class CameraNode extends TempNode {
-    constructor(scope?: string, camera?: Camera);
-
-    scope: string;
-    near: FloatNode | undefined;
-    far: FloatNode | undefined;
-    camera: Camera | undefined;
-    updateFrame: boolean | undefined;
-    nodeType: string;
-
-    setCamera(camera: Camera): void;
-    setScope(scope: string): void;
-    onUpdateFrame(frame: NodeFrame): void;
-    copy(source: CameraNode): this;
-
-    static Nodes: {
-        depthColor: FunctionNode;
-    };
-    static POSITION: string;
-    static DEPTH: string;
-    static TO_VERTEX: string;
+    static PROJECTION_MATRIX: "projectionMatrix";
+    static PROJECTION_MATRIX_INVERSE: "projectionMatrixInverse";
+    static NEAR: "near";
+    static FAR: "far";
+    static LOG_DEPTH: "logDepth";
 }
+
+export const cameraProjectionMatrix: ShaderNodeObject<CameraNode>;
+export const cameraProjectionMatrixInverse: ShaderNodeObject<CameraNode>;
+export const cameraNear: ShaderNodeObject<CameraNode>;
+export const cameraFar: ShaderNodeObject<CameraNode>;
+export const cameraLogDepth: ShaderNodeObject<CameraNode>;
+export const cameraViewMatrix: ShaderNodeObject<CameraNode>;
+export const cameraNormalMatrix: ShaderNodeObject<CameraNode>;
+export const cameraWorldMatrix: ShaderNodeObject<CameraNode>;
+export const cameraPosition: ShaderNodeObject<CameraNode>;

@@ -1,5 +1,5 @@
 import { Loader, FileLoader, Vector3, Matrix4 } from '../../../build/three.module.js';
-import { gunzipSync } from '../libs/fflate.module.js';
+import * as fflate from '../libs/fflate.module.js';
 import { Volume } from '../misc/Volume.js';
 
 class NRRDLoader extends Loader {
@@ -45,6 +45,16 @@ class NRRDLoader extends Loader {
 
 	}
 
+	/**
+	 *
+	 * @param {boolean} segmentation is a option for user to choose
+   	 */
+	setSegmentation( segmentation ) {
+
+	    this.segmentation = segmentation;
+
+	}
+
 	parse( data ) {
 
 		// this parser is largely inspired from the XTK NRRD parser : https://github.com/xtk/X
@@ -60,12 +70,6 @@ class NRRDLoader extends Loader {
 		const headerObject = {};
 
 		function scan( type, chunks ) {
-
-			if ( chunks === undefined || chunks === null ) {
-
-				chunks = 1;
-
-			}
 
 			let _chunkSize = 1;
 			let _array_type = Uint8Array;
@@ -123,13 +127,6 @@ class NRRDLoader extends Loader {
 
 			}
 
-			if ( chunks == 1 ) {
-
-				// if only one chunk was requested, just return one value
-				return _bytes[ 0 ];
-
-			}
-
 			// return the byte array
 			return _bytes;
 
@@ -168,7 +165,7 @@ class NRRDLoader extends Loader {
 
 					headerObject.isNrrd = true;
 
-				} else if ( l.match( /^#/ ) ) ; else if ( m = l.match( /(.*):(.*)/ ) ) {
+				} else if ( ! l.match( /^#/ ) && ( m = l.match( /(.*):(.*)/ ) ) ) {
 
 					field = m[ 1 ].trim();
 					data = m[ 2 ].trim();
@@ -202,7 +199,11 @@ class NRRDLoader extends Loader {
 			if ( ! headerObject.vectors ) {
 
 				//if no space direction is set, let's use the identity
-				headerObject.vectors = [ new Vector3( 1, 0, 0 ), new Vector3( 0, 1, 0 ), new Vector3( 0, 0, 1 ) ];
+				headerObject.vectors = [ ];
+				headerObject.vectors.push( [ 1, 0, 0 ] );
+				headerObject.vectors.push( [ 0, 1, 0 ] );
+				headerObject.vectors.push( [ 0, 0, 1 ] );
+
 				//apply spacing if defined
 				if ( headerObject.spacings ) {
 
@@ -210,7 +211,11 @@ class NRRDLoader extends Loader {
 
 						if ( ! isNaN( headerObject.spacings[ i ] ) ) {
 
-							headerObject.vectors[ i ].multiplyScalar( headerObject.spacings[ i ] );
+							for ( let j = 0; j <= 2; j ++ ) {
+
+								headerObject.vectors[ i ][ j ] *= headerObject.spacings[ i ];
+
+							}
 
 						}
 
@@ -314,7 +319,7 @@ class NRRDLoader extends Loader {
 
 			// we need to decompress the datastream
 			// here we start the unzipping and get a typed Uint8Array back
-			_data = gunzipSync( new Uint8Array( _data ) );// eslint-disable-line no-undef
+			_data = fflate.gunzipSync( new Uint8Array( _data ) );
 
 		} else if ( headerObject.encoding === 'ascii' || headerObject.encoding === 'text' || headerObject.encoding === 'txt' || headerObject.encoding === 'hex' ) {
 
@@ -340,6 +345,7 @@ class NRRDLoader extends Loader {
 
 		const volume = new Volume();
 		volume.header = headerObject;
+		volume.segmentation = this.segmentation;
 		//
 		// parse the (unzipped) data to a datastream of the correct type
 		//
@@ -366,9 +372,21 @@ class NRRDLoader extends Loader {
 			const zIndex = headerObject.vectors.findIndex( vector => vector[ 2 ] !== 0 );
 
 			const axisOrder = [];
-			axisOrder[ xIndex ] = 'x';
-			axisOrder[ yIndex ] = 'y';
-			axisOrder[ zIndex ] = 'z';
+
+			if ( xIndex !== yIndex && xIndex !== zIndex && yIndex !== zIndex ) {
+
+				axisOrder[ xIndex ] = 'x';
+				axisOrder[ yIndex ] = 'y';
+				axisOrder[ zIndex ] = 'z';
+
+			} else {
+
+				axisOrder[ 0 ] = 'x';
+				axisOrder[ 1 ] = 'y';
+				axisOrder[ 2 ] = 'z';
+
+			}
+
 			volume.axisOrder = axisOrder;
 
 		} else {
@@ -437,7 +455,12 @@ class NRRDLoader extends Loader {
 
 		volume.inverseMatrix = new Matrix4();
 		volume.inverseMatrix.copy( volume.matrix ).invert();
-		volume.RASDimensions = new Vector3( volume.xLength, volume.yLength, volume.zLength ).applyMatrix4( volume.matrix ).round().toArray().map( Math.abs );
+
+		volume.RASDimensions = [
+			Math.floor( volume.xLength * spacingX ),
+			Math.floor( volume.yLength * spacingY ),
+			Math.floor( volume.zLength * spacingZ )
+		];
 
 		// .. and set the default threshold
 		// only if the threshold was not already set

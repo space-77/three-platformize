@@ -1,9 +1,9 @@
-import { Mesh, Vector3, Color, FrontSide, Plane, Matrix4, Vector4, PerspectiveCamera, WebGLRenderTarget, MathUtils, UniformsUtils, UniformsLib, ShaderMaterial, LinearFilter, RGBFormat } from '../../../build/three.module.js';
+import { Mesh, Vector3, Color, FrontSide, Plane, Matrix4, Vector4, PerspectiveCamera, WebGLRenderTarget, UniformsUtils, UniformsLib, ShaderMaterial } from '../../../build/three.module.js';
 
 /**
  * Work based on :
- * http://slayvin.net : Flat mirror for three.js
- * http://www.adelphi.edu/~stemkoski : An implementation of water shader based on the flat mirror
+ * https://github.com/Slayvin: Flat mirror for three.js
+ * https://home.adelphi.edu/~stemkoski/ : An implementation of water shader based on the flat mirror
  * http://29a.ch/ && http://29a.ch/slides/2012/webglwater/ : Water shader explanations in WebGL
  */
 
@@ -12,6 +12,8 @@ class Water extends Mesh {
 	constructor( geometry, options = {} ) {
 
 		super( geometry );
+
+		this.isWater = true;
 
 		const scope = this;
 
@@ -48,21 +50,11 @@ class Water extends Mesh {
 
 		const mirrorCamera = new PerspectiveCamera();
 
-		const parameters = {
-			minFilter: LinearFilter,
-			magFilter: LinearFilter,
-			format: RGBFormat
-		};
-
-		const renderTarget = new WebGLRenderTarget( textureWidth, textureHeight, parameters );
-
-		if ( ! MathUtils.isPowerOfTwo( textureWidth ) || ! MathUtils.isPowerOfTwo( textureHeight ) ) {
-
-			renderTarget.texture.generateMipmaps = false;
-
-		}
+		const renderTarget = new WebGLRenderTarget( textureWidth, textureHeight );
 
 		const mirrorShader = {
+
+			name: 'MirrorShader',
 
 			uniforms: UniformsUtils.merge( [
 				UniformsLib[ 'fog' ],
@@ -178,15 +170,17 @@ class Water extends Mesh {
 					gl_FragColor = vec4( outgoingLight, alpha );
 
 					#include <tonemapping_fragment>
-					#include <fog_fragment>
+					#include <colorspace_fragment>
+					#include <fog_fragment>	
 				}`
 
 		};
 
 		const material = new ShaderMaterial( {
-			fragmentShader: mirrorShader.fragmentShader,
-			vertexShader: mirrorShader.vertexShader,
+			name: mirrorShader.name,
 			uniforms: UniformsUtils.clone( mirrorShader.uniforms ),
+			vertexShader: mirrorShader.vertexShader,
+			fragmentShader: mirrorShader.fragmentShader,
 			lights: true,
 			side: side,
 			fog: fog
@@ -322,7 +316,5 @@ class Water extends Mesh {
 	}
 
 }
-
-Water.prototype.isWater = true;
 
 export { Water };

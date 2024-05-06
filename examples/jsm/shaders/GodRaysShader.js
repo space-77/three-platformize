@@ -20,6 +20,8 @@ import { Vector3, Color } from '../../../build/three.module.js';
 
 const GodRaysDepthMaskShader = {
 
+	name: 'GodRaysDepthMaskShader',
+
 	uniforms: {
 
 		tInput: {
@@ -70,6 +72,8 @@ const GodRaysDepthMaskShader = {
  */
 
 const GodRaysGenerateShader = {
+
+	name: 'GodRaysGenerateShader',
 
 	uniforms: {
 
@@ -191,6 +195,8 @@ const GodRaysGenerateShader = {
 
 const GodRaysCombineShader = {
 
+	name: 'GodRaysCombineShader',
+
 	uniforms: {
 
 		tColors: {
@@ -247,6 +253,8 @@ const GodRaysCombineShader = {
  */
 
 const GodRaysFakeSunShader = {
+
+	name: 'GodRaysFakeSunShader',
 
 	uniforms: {
 

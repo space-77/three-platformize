@@ -1,7 +1,7 @@
-import { DataTexture, RGBFormat, FloatType, RepeatWrapping, NearestFilter, Mesh, InstancedMesh, Matrix4, DynamicDrawUsage } from '../../../build/three.module.js';
+import { Matrix4, DataTexture, RGBAFormat, FloatType, RepeatWrapping, NearestFilter, Mesh, InstancedMesh, DynamicDrawUsage } from '../../../build/three.module.js';
 
 // Original src: https://github.com/zz85/threejs-path-flow
-const BITS = 3;
+const CHANNELS = 4;
 const TEXTURE_WIDTH = 1024;
 const TEXTURE_HEIGHT = 4;
 
@@ -12,12 +12,12 @@ const TEXTURE_HEIGHT = 4;
  */
 function initSplineTexture( numberOfCurves = 1 ) {
 
-	const dataArray = new Float32Array( TEXTURE_WIDTH * TEXTURE_HEIGHT * numberOfCurves * BITS );
+	const dataArray = new Float32Array( TEXTURE_WIDTH * TEXTURE_HEIGHT * numberOfCurves * CHANNELS );
 	const dataTexture = new DataTexture(
 		dataArray,
 		TEXTURE_WIDTH,
 		TEXTURE_HEIGHT * numberOfCurves,
-		RGBFormat,
+		RGBAFormat,
 		FloatType
 	);
 
@@ -70,10 +70,11 @@ function setTextureValue( texture, index, x, y, z, o ) {
 
 	const image = texture.image;
 	const { data } = image;
-	const i = BITS * TEXTURE_WIDTH * o; // Row Offset
-	data[ index * BITS + i + 0 ] = x;
-	data[ index * BITS + i + 1 ] = y;
-	data[ index * BITS + i + 2 ] = z;
+	const i = CHANNELS * TEXTURE_WIDTH * o; // Row Offset
+	data[ index * CHANNELS + i + 0 ] = x;
+	data[ index * CHANNELS + i + 1 ] = y;
+	data[ index * CHANNELS + i + 2 ] = z;
+	data[ index * CHANNELS + i + 3 ] = 1;
 
 }
 
@@ -203,8 +204,26 @@ class Flow {
 				child instanceof InstancedMesh
 			) {
 
-				child.material = child.material.clone();
-				modifyShader( child.material, uniforms, numberOfCurves );
+				if ( Array.isArray( child.material ) ) {
+
+					const materials = [];
+
+					for ( const material of child.material ) {
+
+						const newMaterial = material.clone();
+						modifyShader( newMaterial, uniforms, numberOfCurves );
+						materials.push( newMaterial );
+
+					}
+
+					child.material = materials;
+
+				} else {
+
+					child.material = child.material.clone();
+					modifyShader( child.material, uniforms, numberOfCurves );
+
+				}
 
 			}
 
@@ -259,6 +278,7 @@ class InstancedFlow extends Flow {
 			count
 		);
 		mesh.instanceMatrix.setUsage( DynamicDrawUsage );
+		mesh.frustumCulled = false;
 		super( mesh, curveCount );
 
 		this.offsets = new Array( count ).fill( 0 );

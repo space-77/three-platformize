@@ -1,4 +1,4 @@
-import { Vector3, Loader, FileLoader, Group, BufferGeometry, Float32BufferAttribute, LineBasicMaterial, Material, PointsMaterial, MeshPhongMaterial, LineSegments, Points, Mesh } from '../../../build/three.module.js';
+import { Vector3, Color, Loader, FileLoader, Group, BufferGeometry, Float32BufferAttribute, LineBasicMaterial, Material, PointsMaterial, MeshPhongMaterial, LineSegments, Points, Mesh } from '../../../build/three.module.js';
 
 // o object_name | g group_name
 const _object_pattern = /^[og]\s*(.+)?/;
@@ -8,6 +8,7 @@ const _material_library_pattern = /^mtllib /;
 const _material_use_pattern = /^usemtl /;
 // usemap map_name
 const _map_use_pattern = /^usemap /;
+const _face_vertex_data_separator_pattern = /\s+/;
 
 const _vA = new Vector3();
 const _vB = new Vector3();
@@ -15,6 +16,8 @@ const _vC = new Vector3();
 
 const _ab = new Vector3();
 const _cb = new Vector3();
+
+const _color = new Color();
 
 function ParserState() {
 
@@ -486,31 +489,22 @@ class OBJLoader extends Loader {
 		}
 
 		const lines = text.split( '\n' );
-		let line = '', lineFirstChar = '';
-		let lineLength = 0;
 		let result = [];
-
-		// Faster to just trim left side of the line. Use if available.
-		const trimLeft = ( typeof ''.trimLeft === 'function' );
 
 		for ( let i = 0, l = lines.length; i < l; i ++ ) {
 
-			line = lines[ i ];
+			const line = lines[ i ].trimStart();
 
-			line = trimLeft ? line.trimLeft() : line.trim();
+			if ( line.length === 0 ) continue;
 
-			lineLength = line.length;
-
-			if ( lineLength === 0 ) continue;
-
-			lineFirstChar = line.charAt( 0 );
+			const lineFirstChar = line.charAt( 0 );
 
 			// @todo invoke passed in handler if any
-			if ( lineFirstChar === '#' ) continue;
+			if ( lineFirstChar === '#' ) continue; // skip comments
 
 			if ( lineFirstChar === 'v' ) {
 
-				const data = line.split( /\s+/ );
+				const data = line.split( _face_vertex_data_separator_pattern );
 
 				switch ( data[ 0 ] ) {
 
@@ -522,12 +516,13 @@ class OBJLoader extends Loader {
 						);
 						if ( data.length >= 7 ) {
 
-							state.colors.push(
+							_color.setRGB(
 								parseFloat( data[ 4 ] ),
 								parseFloat( data[ 5 ] ),
 								parseFloat( data[ 6 ] )
+							).convertSRGBToLinear();
 
-							);
+							state.colors.push( _color.r, _color.g, _color.b );
 
 						} else {
 
@@ -556,8 +551,8 @@ class OBJLoader extends Loader {
 
 			} else if ( lineFirstChar === 'f' ) {
 
-				const lineData = line.substr( 1 ).trim();
-				const vertexData = lineData.split( /\s+/ );
+				const lineData = line.slice( 1 ).trim();
+				const vertexData = lineData.split( _face_vertex_data_separator_pattern );
 				const faceVertices = [];
 
 				// Parse the face vertex data into an easy to work with format
@@ -619,7 +614,7 @@ class OBJLoader extends Loader {
 
 			} else if ( lineFirstChar === 'p' ) {
 
-				const lineData = line.substr( 1 ).trim();
+				const lineData = line.slice( 1 ).trim();
 				const pointData = lineData.split( ' ' );
 
 				state.addPointGeometry( pointData );
@@ -631,8 +626,8 @@ class OBJLoader extends Loader {
 				// g group_name
 
 				// WORKAROUND: https://bugs.chromium.org/p/v8/issues/detail?id=2869
-				// let name = result[ 0 ].substr( 1 ).trim();
-				const name = ( ' ' + result[ 0 ].substr( 1 ).trim() ).substr( 1 );
+				// let name = result[ 0 ].slice( 1 ).trim();
+				const name = ( ' ' + result[ 0 ].slice( 1 ).trim() ).slice( 1 );
 
 				state.startObject( name );
 
@@ -670,8 +665,6 @@ class OBJLoader extends Loader {
 
 				/*
 					 * http://paulbourke.net/dataformats/obj/
-					 * or
-					 * http://www.cs.utah.edu/~boulos/cs3505/obj_spec.pdf
 					 *
 					 * From chapter "Grouping" Syntax explanation "s group_number":
 					 * "group_number is the smoothing group number. To turn off smoothing groups, use a value of 0 or off.

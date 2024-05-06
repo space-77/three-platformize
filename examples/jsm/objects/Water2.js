@@ -1,11 +1,11 @@
-import { Mesh, Color, Vector2, LinearEncoding, TextureLoader, Matrix4, Clock, ShaderMaterial, UniformsUtils, UniformsLib, RepeatWrapping, Vector4 } from '../../../build/three.module.js';
+import { Vector4, Mesh, Color, Vector2, TextureLoader, Matrix4, Clock, ShaderMaterial, UniformsUtils, UniformsLib, RepeatWrapping } from '../../../build/three.module.js';
 import { Reflector } from './Reflector.js';
 import { Refractor } from './Refractor.js';
 
 /**
  * References:
- *	http://www.valvesoftware.com/publications/2010/siggraph2010_vlachos_waterflow.pdf
- * 	http://graphicsrunner.blogspot.de/2010/08/water-using-flow-maps.html
+ *	https://alex.vlachos.com/graphics/Vlachos-SIGGRAPH10-WaterFlow.pdf
+ *	http://graphicsrunner.blogspot.de/2010/08/water-using-flow-maps.html
  *
  */
 
@@ -15,20 +15,21 @@ class Water extends Mesh {
 
 		super( geometry );
 
+		this.isWater = true;
+
 		this.type = 'Water';
 
 		const scope = this;
 
 		const color = ( options.color !== undefined ) ? new Color( options.color ) : new Color( 0xFFFFFF );
-		const textureWidth = options.textureWidth || 512;
-		const textureHeight = options.textureHeight || 512;
-		const clipBias = options.clipBias || 0;
-		const flowDirection = options.flowDirection || new Vector2( 1, 0 );
-		const flowSpeed = options.flowSpeed || 0.03;
-		const reflectivity = options.reflectivity || 0.02;
-		const scale = options.scale || 1;
-		const shader = options.shader || Water.WaterShader;
-		const encoding = options.encoding !== undefined ? options.encoding : LinearEncoding;
+		const textureWidth = options.textureWidth !== undefined ? options.textureWidth : 512;
+		const textureHeight = options.textureHeight !== undefined ? options.textureHeight : 512;
+		const clipBias = options.clipBias !== undefined ? options.clipBias : 0;
+		const flowDirection = options.flowDirection !== undefined ? options.flowDirection : new Vector2( 1, 0 );
+		const flowSpeed = options.flowSpeed !== undefined ? options.flowSpeed : 0.03;
+		const reflectivity = options.reflectivity !== undefined ? options.reflectivity : 0.02;
+		const scale = options.scale !== undefined ? options.scale : 1;
+		const shader = options.shader !== undefined ? options.shader : Water.WaterShader;
 
 		const textureLoader = new TextureLoader();
 
@@ -60,15 +61,13 @@ class Water extends Mesh {
 		const reflector = new Reflector( geometry, {
 			textureWidth: textureWidth,
 			textureHeight: textureHeight,
-			clipBias: clipBias,
-			encoding: encoding
+			clipBias: clipBias
 		} );
 
 		const refractor = new Refractor( geometry, {
 			textureWidth: textureWidth,
 			textureHeight: textureHeight,
-			clipBias: clipBias,
-			encoding: encoding
+			clipBias: clipBias
 		} );
 
 		reflector.matrixAutoUpdate = false;
@@ -77,6 +76,7 @@ class Water extends Mesh {
 		// material
 
 		this.material = new ShaderMaterial( {
+			name: shader.name,
 			uniforms: UniformsUtils.merge( [
 				UniformsLib[ 'fog' ],
 				shader.uniforms
@@ -192,9 +192,9 @@ class Water extends Mesh {
 
 }
 
-Water.prototype.isWater = true;
-
 Water.WaterShader = {
+
+	name: 'WaterShader',
 
 	uniforms: {
 
@@ -339,7 +339,7 @@ Water.WaterShader = {
 			gl_FragColor = vec4( color, 1.0 ) * mix( refractColor, reflectColor, reflectance );
 
 			#include <tonemapping_fragment>
-			#include <encodings_fragment>
+			#include <colorspace_fragment>
 			#include <fog_fragment>
 
 		}`

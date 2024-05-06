@@ -1,4 +1,4 @@
-import { ExtrudeGeometry, BufferGeometry } from '../../../build/three.module.js';
+import { ExtrudeGeometry } from '../../../build/three.module.js';
 
 /**
  * Text = 3D Text
@@ -7,7 +7,7 @@ import { ExtrudeGeometry, BufferGeometry } from '../../../build/three.module.js'
  *  font: <THREE.Font>, // font
  *
  *  size: <float>, // size of the text
- *  height: <float>, // thickness to extrude text
+ *  depth: <float>, // thickness to extrude text
  *  curveSegments: <int>, // number of points on the curves
  *
  *  bevelEnabled: <bool>, // turn on bevel
@@ -23,26 +23,35 @@ class TextGeometry extends ExtrudeGeometry {
 
 		const font = parameters.font;
 
-		if ( ! ( font && font.isFont ) ) {
+		if ( font === undefined ) {
 
-			console.error( 'THREE.TextGeometry: font parameter is not an instance of THREE.Font.' );
-			return new BufferGeometry();
+			super(); // generate default extrude geometry
+
+		} else {
+
+			const shapes = font.generateShapes( text, parameters.size );
+
+			// translate parameters to ExtrudeGeometry API
+
+			if ( parameters.depth === undefined && parameters.height !== undefined ) {
+
+				console.warn( 'THREE.TextGeometry: .height is now depreciated. Please use .depth instead' ); // @deprecated, r163
+
+			}
+
+			parameters.depth = parameters.depth !== undefined ?
+				parameters.depth : parameters.height !== undefined ?
+					parameters.height : 50;
+
+			// defaults
+
+			if ( parameters.bevelThickness === undefined ) parameters.bevelThickness = 10;
+			if ( parameters.bevelSize === undefined ) parameters.bevelSize = 8;
+			if ( parameters.bevelEnabled === undefined ) parameters.bevelEnabled = false;
+
+			super( shapes, parameters );
 
 		}
-
-		const shapes = font.generateShapes( text, parameters.size );
-
-		// translate parameters to ExtrudeGeometry API
-
-		parameters.depth = parameters.height !== undefined ? parameters.height : 50;
-
-		// defaults
-
-		if ( parameters.bevelThickness === undefined ) parameters.bevelThickness = 10;
-		if ( parameters.bevelSize === undefined ) parameters.bevelSize = 8;
-		if ( parameters.bevelEnabled === undefined ) parameters.bevelEnabled = false;
-
-		super( shapes, parameters );
 
 		this.type = 'TextGeometry';
 

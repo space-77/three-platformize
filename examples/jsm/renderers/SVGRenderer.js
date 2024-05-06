@@ -1,5 +1,5 @@
 import { $document } from '../../../build/three.module.js';
-import { Object3D, Box2, Color, Vector3, Matrix3, Matrix4, Camera } from '../../../build/three.module.js';
+import { Object3D, Box2, Color, Vector3, Matrix3, Matrix4, SRGBColorSpace, Camera } from '../../../build/three.module.js';
 import { Projector, RenderableSprite, RenderableLine, RenderableFace } from './Projector.js';
 
 class SVGObject extends Object3D {
@@ -8,13 +8,13 @@ class SVGObject extends Object3D {
 
 		super();
 
+		this.isSVGObject = true;
+
 		this.node = node;
 
 	}
 
 }
-
-SVGObject.prototype.isSVGObject = true;
 
 class SVGRenderer {
 
@@ -64,6 +64,8 @@ class SVGRenderer {
 		this.sortElements = true;
 
 		this.overdraw = 0.5;
+
+		this.outputColorSpace = SRGBColorSpace;
 
 		this.info = {
 
@@ -145,7 +147,7 @@ class SVGRenderer {
 		this.clear = function () {
 
 			removeChildNodes();
-			_svg.style.backgroundColor = _clearColor.getStyle();
+			_svg.style.backgroundColor = _clearColor.getStyle( _this.outputColorSpace );
 
 		};
 
@@ -163,7 +165,7 @@ class SVGRenderer {
 			if ( background && background.isColor ) {
 
 				removeChildNodes();
-				_svg.style.backgroundColor = background.getStyle();
+				_svg.style.backgroundColor = background.getStyle( _this.outputColorSpace );
 
 			} else if ( this.autoClear === true ) {
 
@@ -217,7 +219,7 @@ class SVGRenderer {
 
 					if ( _clipBox.intersectsBox( _elemBox ) === true ) {
 
-						renderLine( _v1, _v2, element, material );
+						renderLine( _v1, _v2, material );
 
 					}
 
@@ -379,7 +381,7 @@ class SVGRenderer {
 
 			if ( material.isSpriteMaterial || material.isPointsMaterial ) {
 
-				style = 'fill:' + material.color.getStyle() + ';fill-opacity:' + material.opacity;
+				style = 'fill:' + material.color.getStyle( _this.outputColorSpace ) + ';fill-opacity:' + material.opacity;
 
 			}
 
@@ -387,13 +389,13 @@ class SVGRenderer {
 
 		}
 
-		function renderLine( v1, v2, element, material ) {
+		function renderLine( v1, v2, material ) {
 
 			const path = 'M' + convert( v1.positionScreen.x ) + ',' + convert( v1.positionScreen.y ) + 'L' + convert( v2.positionScreen.x ) + ',' + convert( v2.positionScreen.y );
 
 			if ( material.isLineBasicMaterial ) {
 
-				let style = 'fill:none;stroke:' + material.color.getStyle() + ';stroke-opacity:' + material.opacity + ';stroke-width:' + material.linewidth + ';stroke-linecap:' + material.linecap;
+				let style = 'fill:none;stroke:' + material.color.getStyle( _this.outputColorSpace ) + ';stroke-opacity:' + material.opacity + ';stroke-width:' + material.linewidth + ';stroke-linecap:' + material.linecap;
 
 				if ( material.isLineDashedMaterial ) {
 
@@ -453,11 +455,11 @@ class SVGRenderer {
 
 			if ( material.wireframe ) {
 
-				style = 'fill:none;stroke:' + _color.getStyle() + ';stroke-opacity:' + material.opacity + ';stroke-width:' + material.wireframeLinewidth + ';stroke-linecap:' + material.wireframeLinecap + ';stroke-linejoin:' + material.wireframeLinejoin;
+				style = 'fill:none;stroke:' + _color.getStyle( _this.outputColorSpace ) + ';stroke-opacity:' + material.opacity + ';stroke-width:' + material.wireframeLinewidth + ';stroke-linecap:' + material.wireframeLinecap + ';stroke-linejoin:' + material.wireframeLinejoin;
 
 			} else {
 
-				style = 'fill:' + _color.getStyle() + ';fill-opacity:' + material.opacity;
+				style = 'fill:' + _color.getStyle( _this.outputColorSpace ) + ';fill-opacity:' + material.opacity;
 
 			}
 

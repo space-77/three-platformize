@@ -7,7 +7,9 @@ import { Vector2 } from '../../../build/three.module.js';
  * aspect: vec2 of (1/width, 1/height)
  */
 
-var FreiChenShader = {
+const FreiChenShader = {
+
+	name: 'FreiChenShader',
 
 	uniforms: {
 

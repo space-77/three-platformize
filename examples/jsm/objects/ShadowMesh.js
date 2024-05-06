@@ -1,4 +1,4 @@
-import { Matrix4, Mesh, MeshBasicMaterial } from '../../../build/three.module.js';
+import { Matrix4, Mesh, MeshBasicMaterial, EqualStencilFunc, IncrementStencilOp } from '../../../build/three.module.js';
 
 /**
  * A shadow Mesh that follows a shadow-casting Mesh in the scene, but is confined to a single plane.
@@ -15,11 +15,17 @@ class ShadowMesh extends Mesh {
 			color: 0x000000,
 			transparent: true,
 			opacity: 0.6,
-			depthWrite: false
+			depthWrite: false,
+			stencilWrite: true,
+			stencilFunc: EqualStencilFunc,
+			stencilRef: 0,
+			stencilZPass: IncrementStencilOp
 
 		} );
 
 		super( mesh.geometry, shadowMaterial );
+
+		this.isShadowMesh = true;
 
 		this.meshMatrix = mesh.matrixWorld;
 
@@ -64,7 +70,5 @@ class ShadowMesh extends Mesh {
 	}
 
 }
-
-ShadowMesh.prototype.isShadowMesh = true;
 
 export { ShadowMesh };

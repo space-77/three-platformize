@@ -1,4 +1,4 @@
-import { Scene, WebGLRenderTarget, HalfFloatType, FloatType, MeshPhongMaterial, MeshBasicMaterial, DoubleSide, PlaneGeometry, Mesh, PlaneBufferGeometry } from '../../../build/three.module.js';
+import * as THREE from '../../../build/three.module.js';
 import { potpack } from '../libs/potpack.module.js';
 
 /**
@@ -25,37 +25,40 @@ class ProgressiveLightMap {
 		this.res = res;
 		this.lightMapContainers = [];
 		this.compiled = false;
-		this.scene = new Scene();
+		this.scene = new THREE.Scene();
 		this.scene.background = null;
-		this.tinyTarget = new WebGLRenderTarget( 1, 1 );
+		this.tinyTarget = new THREE.WebGLRenderTarget( 1, 1 );
 		this.buffer1Active = false;
 		this.firstUpdate = true;
 		this.warned = false;
 
 		// Create the Progressive LightMap Texture
-		const format = /(Android|iPad|iPhone|iPod)/g.test( navigator.userAgent ) ? HalfFloatType : FloatType;
-		this.progressiveLightMap1 = new WebGLRenderTarget( this.res, this.res, { type: format } );
-		this.progressiveLightMap2 = new WebGLRenderTarget( this.res, this.res, { type: format } );
+		const format = /(Android|iPad|iPhone|iPod)/g.test( navigator.userAgent ) ? THREE.HalfFloatType : THREE.FloatType;
+		this.progressiveLightMap1 = new THREE.WebGLRenderTarget( this.res, this.res, { type: format } );
+		this.progressiveLightMap2 = new THREE.WebGLRenderTarget( this.res, this.res, { type: format } );
+		this.progressiveLightMap2.texture.channel = 1;
 
 		// Inject some spicy new logic into a standard phong material
-		this.uvMat = new MeshPhongMaterial();
+		this.uvMat = new THREE.MeshPhongMaterial();
 		this.uvMat.uniforms = {};
 		this.uvMat.onBeforeCompile = ( shader ) => {
 
 			// Vertex Shader: Set Vertex Positions to the Unwrapped UV Positions
 			shader.vertexShader =
+				'attribute vec2 uv1;\n' +
 				'#define USE_LIGHTMAP\n' +
+				'#define LIGHTMAP_UV uv1\n' +
 				shader.vertexShader.slice( 0, - 1 ) +
-				'	gl_Position = vec4((uv2 - 0.5) * 2.0, 1.0, 1.0); }';
+				'	gl_Position = vec4((LIGHTMAP_UV - 0.5) * 2.0, 1.0, 1.0); }';
 
 			// Fragment Shader: Set Pixels to average in the Previous frame's Shadows
 			const bodyStart = shader.fragmentShader.indexOf( 'void main() {' );
 			shader.fragmentShader =
-				'varying vec2 vUv2;\n' +
+				'#define USE_LIGHTMAP\n' +
 				shader.fragmentShader.slice( 0, bodyStart ) +
 				'	uniform sampler2D previousShadowMap;\n	uniform float averagingWindow;\n' +
 				shader.fragmentShader.slice( bodyStart - 1, - 1 ) +
-				`\nvec3 texelOld = texture2D(previousShadowMap, vUv2).rgb;
+				`\nvec3 texelOld = texture2D(previousShadowMap, vLightMapUv).rgb;
 				gl_FragColor.rgb = mix(texelOld, gl_FragColor.rgb, 1.0/averagingWindow);
 			}`;
 
@@ -75,7 +78,7 @@ class ProgressiveLightMap {
 	}
 
 	/**
-	 * Sets these objects' materials' lightmaps and modifies their uv2's.
+	 * Sets these objects' materials' lightmaps and modifies their uv1's.
 	 * @param {Object3D} objects An array of objects and lights to set up your lightmap.
 	 */
 	addObjectsToLightMap( objects ) {
@@ -128,16 +131,16 @@ class ProgressiveLightMap {
 		const dimensions = potpack( this.uv_boxes );
 		this.uv_boxes.forEach( ( box ) => {
 
-			const uv2 = objects[ box.index ].geometry.getAttribute( 'uv' ).clone();
-			for ( let i = 0; i < uv2.array.length; i += uv2.itemSize ) {
+			const uv1 = objects[ box.index ].geometry.getAttribute( 'uv' ).clone();
+			for ( let i = 0; i < uv1.array.length; i += uv1.itemSize ) {
 
-				uv2.array[ i ] = ( uv2.array[ i ] + box.x + padding ) / dimensions.w;
-				uv2.array[ i + 1 ] = ( uv2.array[ i + 1 ] + box.y + padding ) / dimensions.h;
+				uv1.array[ i ] = ( uv1.array[ i ] + box.x + padding ) / dimensions.w;
+				uv1.array[ i + 1 ] = ( uv1.array[ i + 1 ] + box.y + padding ) / dimensions.h;
 
 			}
 
-			objects[ box.index ].geometry.setAttribute( 'uv2', uv2 );
-			objects[ box.index ].geometry.getAttribute( 'uv2' ).needsUpdate = true;
+			objects[ box.index ].geometry.setAttribute( 'uv1', uv1 );
+			objects[ box.index ].geometry.getAttribute( 'uv1' ).needsUpdate = true;
 
 		} );
 
@@ -239,10 +242,10 @@ class ProgressiveLightMap {
 
 		if ( this.labelMesh == null ) {
 
-			this.labelMaterial = new MeshBasicMaterial(
-				{ map: this.progressiveLightMap1.texture, side: DoubleSide } );
-			this.labelPlane = new PlaneGeometry( 100, 100 );
-			this.labelMesh = new Mesh( this.labelPlane, this.labelMaterial );
+			this.labelMaterial = new THREE.MeshBasicMaterial(
+				{ map: this.progressiveLightMap1.texture, side: THREE.DoubleSide } );
+			this.labelPlane = new THREE.PlaneGeometry( 100, 100 );
+			this.labelMesh = new THREE.Mesh( this.labelPlane, this.labelMaterial );
 			this.labelMesh.position.y = 250;
 			this.lightMapContainers[ 0 ].object.parent.add( this.labelMesh );
 
@@ -265,7 +268,7 @@ class ProgressiveLightMap {
 	 */
 	_initializeBlurPlane( res, lightMap = null ) {
 
-		const blurMaterial = new MeshBasicMaterial();
+		const blurMaterial = new THREE.MeshBasicMaterial();
 		blurMaterial.uniforms = { previousShadowMap: { value: null },
 								  pixelOffset: { value: 1.0 / res },
 								  polygonOffset: true, polygonOffsetFactor: - 1, polygonOffsetUnits: 3.0 };
@@ -307,7 +310,7 @@ class ProgressiveLightMap {
 
 		};
 
-		this.blurringPlane = new Mesh( new PlaneBufferGeometry( 1, 1 ), blurMaterial );
+		this.blurringPlane = new THREE.Mesh( new THREE.PlaneGeometry( 1, 1 ), blurMaterial );
 		this.blurringPlane.name = 'Blurring Plane';
 		this.blurringPlane.frustumCulled = false;
 		this.blurringPlane.renderOrder = 0;

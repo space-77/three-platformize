@@ -1,4 +1,4 @@
-import { Loader, FileLoader, AnimationClip, Skeleton, Vector3, Quaternion, Bone, VectorKeyframeTrack, QuaternionKeyframeTrack } from '../../../build/three.module.js';
+import { Loader, FileLoader, Skeleton, Vector3, Quaternion, Bone, VectorKeyframeTrack, QuaternionKeyframeTrack, AnimationClip } from '../../../build/three.module.js';
 
 /**
  * Description: reads BVH files and outputs a single Skeleton and an AnimationClip
@@ -375,13 +375,13 @@ class BVHLoader extends Loader {
 
 				if ( scope.animateBonePositions ) {
 
-					tracks.push( new VectorKeyframeTrack( '.bones[' + bone.name + '].position', times, positions ) );
+					tracks.push( new VectorKeyframeTrack( bone.name + '.position', times, positions ) );
 
 				}
 
 				if ( scope.animateBoneRotations ) {
 
-					tracks.push( new QuaternionKeyframeTrack( '.bones[' + bone.name + '].quaternion', times, rotations ) );
+					tracks.push( new QuaternionKeyframeTrack( bone.name + '.quaternion', times, rotations ) );
 
 				}
 

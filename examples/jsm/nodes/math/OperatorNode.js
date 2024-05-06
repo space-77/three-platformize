@@ -1,86 +1,274 @@
-import { TempNode } from '../core/TempNode.js';
+import TempNode from '../core/TempNode.js';
+import { addNodeClass } from '../core/Node.js';
+import { nodeProxy, addNodeElement } from '../shadernode/ShaderNode.js';
 
 class OperatorNode extends TempNode {
 
-	constructor( a, b, op ) {
+	constructor( op, aNode, bNode, ...params ) {
 
 		super();
 
-		this.a = a;
-		this.b = b;
 		this.op = op;
 
-	}
+		if ( params.length > 0 ) {
 
-	getType( builder ) {
+			let finalBNode = bNode;
 
-		const a = this.a.getType( builder ),
-			b = this.b.getType( builder );
+			for ( let i = 0; i < params.length; i ++ ) {
 
-		if ( builder.isTypeMatrix( a ) ) {
+				finalBNode = new OperatorNode( op, finalBNode, params[ i ] );
 
-			return 'v4';
+			}
 
-		} else if ( builder.getTypeLength( b ) > builder.getTypeLength( a ) ) {
-
-			// use the greater length vector
-
-			return b;
+			bNode = finalBNode;
 
 		}
 
-		return a;
+		this.aNode = aNode;
+		this.bNode = bNode;
+
+	}
+
+	getNodeType( builder, output ) {
+
+		const op = this.op;
+
+		const aNode = this.aNode;
+		const bNode = this.bNode;
+
+		const typeA = aNode.getNodeType( builder );
+		const typeB = typeof bNode !== 'undefined' ? bNode.getNodeType( builder ) : null;
+
+		if ( typeA === 'void' || typeB === 'void' ) {
+
+			return 'void';
+
+		} else if ( op === '%' ) {
+
+			return typeA;
+
+		} else if ( op === '~' || op === '&' || op === '|' || op === '^' || op === '>>' || op === '<<' ) {
+
+			return builder.getIntegerType( typeA );
+
+		} else if ( op === '!' || op === '==' || op === '&&' || op === '||' || op === '^^' ) {
+
+			return 'bool';
+
+		} else if ( op === '<' || op === '>' || op === '<=' || op === '>=' ) {
+
+			const typeLength = output ? builder.getTypeLength( output ) : Math.max( builder.getTypeLength( typeA ), builder.getTypeLength( typeB ) );
+
+			return typeLength > 1 ? `bvec${ typeLength }` : 'bool';
+
+		} else {
+
+			if ( typeA === 'float' && builder.isMatrix( typeB ) ) {
+
+				return typeB;
+
+			} else if ( builder.isMatrix( typeA ) && builder.isVector( typeB ) ) {
+
+				// matrix x vector
+
+				return builder.getVectorFromMatrix( typeA );
+
+			} else if ( builder.isVector( typeA ) && builder.isMatrix( typeB ) ) {
+
+				// vector x matrix
+
+				return builder.getVectorFromMatrix( typeB );
+
+			} else if ( builder.getTypeLength( typeB ) > builder.getTypeLength( typeA ) ) {
+
+				// anytype x anytype: use the greater length vector
+
+				return typeB;
+
+			}
+
+			return typeA;
+
+		}
 
 	}
 
 	generate( builder, output ) {
 
-		const type = this.getType( builder );
+		const op = this.op;
 
-		const a = this.a.build( builder, type ),
-			b = this.b.build( builder, type );
+		const aNode = this.aNode;
+		const bNode = this.bNode;
 
-		return builder.format( '( ' + a + ' ' + this.op + ' ' + b + ' )', type, output );
+		const type = this.getNodeType( builder, output );
 
-	}
+		let typeA = null;
+		let typeB = null;
 
-	copy( source ) {
+		if ( type !== 'void' ) {
 
-		super.copy( source );
+			typeA = aNode.getNodeType( builder );
+			typeB = typeof bNode !== 'undefined' ? bNode.getNodeType( builder ) : null;
 
-		this.a = source.a;
-		this.b = source.b;
-		this.op = source.op;
+			if ( op === '<' || op === '>' || op === '<=' || op === '>=' || op === '==' ) {
 
-		return this;
+				if ( builder.isVector( typeA ) ) {
 
-	}
+					typeB = typeA;
 
-	toJSON( meta ) {
+				} else {
 
-		let data = this.getJSONNode( meta );
+					typeA = typeB = 'float';
 
-		if ( ! data ) {
+				}
 
-			data = this.createJSONNode( meta );
+			} else if ( op === '>>' || op === '<<' ) {
 
-			data.a = this.a.toJSON( meta ).uuid;
-			data.b = this.b.toJSON( meta ).uuid;
-			data.op = this.op;
+				typeA = type;
+				typeB = builder.changeComponentType( typeB, 'uint' );
+
+			} else if ( builder.isMatrix( typeA ) && builder.isVector( typeB ) ) {
+
+				// matrix x vector
+
+				typeB = builder.getVectorFromMatrix( typeA );
+
+			} else if ( builder.isVector( typeA ) && builder.isMatrix( typeB ) ) {
+
+				// vector x matrix
+
+				typeA = builder.getVectorFromMatrix( typeB );
+
+			} else {
+
+				// anytype x anytype
+
+				typeA = typeB = type;
+
+			}
+
+		} else {
+
+			typeA = typeB = type;
 
 		}
 
-		return data;
+		const a = aNode.build( builder, typeA );
+		const b = typeof bNode !== 'undefined' ? bNode.build( builder, typeB ) : null;
+
+		const outputLength = builder.getTypeLength( output );
+		const fnOpSnippet = builder.getFunctionOperator( op );
+
+		if ( output !== 'void' ) {
+
+			if ( op === '<' && outputLength > 1 ) {
+
+				return builder.format( `${ builder.getMethod( 'lessThan' ) }( ${ a }, ${ b } )`, type, output );
+
+			} else if ( op === '<=' && outputLength > 1 ) {
+
+				return builder.format( `${ builder.getMethod( 'lessThanEqual' ) }( ${ a }, ${ b } )`, type, output );
+
+			} else if ( op === '>' && outputLength > 1 ) {
+
+				return builder.format( `${ builder.getMethod( 'greaterThan' ) }( ${ a }, ${ b } )`, type, output );
+
+			} else if ( op === '>=' && outputLength > 1 ) {
+
+				return builder.format( `${ builder.getMethod( 'greaterThanEqual' ) }( ${ a }, ${ b } )`, type, output );
+
+			} else if ( op === '!' || op === '~' ) {
+
+				return builder.format( `(${op}${a})`, typeA, output );
+
+			} else if ( fnOpSnippet ) {
+
+				return builder.format( `${ fnOpSnippet }( ${ a }, ${ b } )`, type, output );
+
+			} else {
+
+				return builder.format( `( ${ a } ${ op } ${ b } )`, type, output );
+
+			}
+
+		} else if ( typeA !== 'void' ) {
+
+			if ( fnOpSnippet ) {
+
+				return builder.format( `${ fnOpSnippet }( ${ a }, ${ b } )`, type, output );
+
+			} else {
+
+				return builder.format( `${ a } ${ op } ${ b }`, type, output );
+
+			}
+
+		}
+
+	}
+
+	serialize( data ) {
+
+		super.serialize( data );
+
+		data.op = this.op;
+
+	}
+
+	deserialize( data ) {
+
+		super.deserialize( data );
+
+		this.op = data.op;
 
 	}
 
 }
 
-OperatorNode.ADD = '+';
-OperatorNode.SUB = '-';
-OperatorNode.MUL = '*';
-OperatorNode.DIV = '/';
+const add = nodeProxy( OperatorNode, '+' );
+const sub = nodeProxy( OperatorNode, '-' );
+const mul = nodeProxy( OperatorNode, '*' );
+const div = nodeProxy( OperatorNode, '/' );
+const remainder = nodeProxy( OperatorNode, '%' );
+const equal = nodeProxy( OperatorNode, '==' );
+const notEqual = nodeProxy( OperatorNode, '!=' );
+const lessThan = nodeProxy( OperatorNode, '<' );
+const greaterThan = nodeProxy( OperatorNode, '>' );
+const lessThanEqual = nodeProxy( OperatorNode, '<=' );
+const greaterThanEqual = nodeProxy( OperatorNode, '>=' );
+const and = nodeProxy( OperatorNode, '&&' );
+const or = nodeProxy( OperatorNode, '||' );
+const not = nodeProxy( OperatorNode, '!' );
+const xor = nodeProxy( OperatorNode, '^^' );
+const bitAnd = nodeProxy( OperatorNode, '&' );
+const bitNot = nodeProxy( OperatorNode, '~' );
+const bitOr = nodeProxy( OperatorNode, '|' );
+const bitXor = nodeProxy( OperatorNode, '^' );
+const shiftLeft = nodeProxy( OperatorNode, '<<' );
+const shiftRight = nodeProxy( OperatorNode, '>>' );
 
-OperatorNode.prototype.nodeType = 'Operator';
+addNodeElement( 'add', add );
+addNodeElement( 'sub', sub );
+addNodeElement( 'mul', mul );
+addNodeElement( 'div', div );
+addNodeElement( 'remainder', remainder );
+addNodeElement( 'equal', equal );
+addNodeElement( 'notEqual', notEqual );
+addNodeElement( 'lessThan', lessThan );
+addNodeElement( 'greaterThan', greaterThan );
+addNodeElement( 'lessThanEqual', lessThanEqual );
+addNodeElement( 'greaterThanEqual', greaterThanEqual );
+addNodeElement( 'and', and );
+addNodeElement( 'or', or );
+addNodeElement( 'not', not );
+addNodeElement( 'xor', xor );
+addNodeElement( 'bitAnd', bitAnd );
+addNodeElement( 'bitNot', bitNot );
+addNodeElement( 'bitOr', bitOr );
+addNodeElement( 'bitXor', bitXor );
+addNodeElement( 'shiftLeft', shiftLeft );
+addNodeElement( 'shiftRight', shiftRight );
 
-export { OperatorNode };
+addNodeClass( 'OperatorNode', OperatorNode );
+
+export { add, and, bitAnd, bitNot, bitOr, bitXor, OperatorNode as default, div, equal, greaterThan, greaterThanEqual, lessThan, lessThanEqual, mul, not, notEqual, or, remainder, shiftLeft, shiftRight, sub, xor };

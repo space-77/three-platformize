@@ -1,11 +1,13 @@
 import { $window } from '../../../build/three.module.js';
-import { Mesh, Color, Vector3, Vector2, Matrix4, PerspectiveCamera, DepthTexture, UnsignedShortType, NearestFilter, WebGLRenderTarget, MathUtils, ShaderMaterial, UniformsUtils, Plane, LinearFilter, RGBFormat } from '../../../build/three.module.js';
+import { Matrix4, Vector2, Mesh, Color, Vector3, PerspectiveCamera, DepthTexture, UnsignedShortType, NearestFilter, WebGLRenderTarget, ShaderMaterial, UniformsUtils, Plane, HalfFloatType } from '../../../build/three.module.js';
 
 class ReflectorForSSRPass extends Mesh {
 
 	constructor( geometry, options = {} ) {
 
 		super( geometry );
+
+		this.isReflectorForSSRPass = true;
 
 		this.type = 'ReflectorForSSRPass';
 
@@ -88,21 +90,14 @@ class ReflectorForSSRPass extends Mesh {
 		}
 
 		const parameters = {
-			minFilter: LinearFilter,
-			magFilter: LinearFilter,
-			format: RGBFormat,
 			depthTexture: useDepthTexture ? depthTexture : null,
+			type: HalfFloatType
 		};
 
 		const renderTarget = new WebGLRenderTarget( textureWidth, textureHeight, parameters );
 
-		if ( ! MathUtils.isPowerOfTwo( textureWidth ) || ! MathUtils.isPowerOfTwo( textureHeight ) ) {
-
-			renderTarget.texture.generateMipmaps = false;
-
-		}
-
 		const material = new ShaderMaterial( {
+			name: ( shader.name !== undefined ) ? shader.name : 'unspecified',
 			transparent: useDepthTexture,
 			defines: Object.assign( {}, ReflectorForSSRPass.ReflectorShader.defines, {
 				useDepthTexture
@@ -192,10 +187,6 @@ class ReflectorForSSRPass extends Mesh {
 			textureMatrix.multiply( virtualCamera.matrixWorldInverse );
 			textureMatrix.multiply( scope.matrixWorld );
 
-			// Render
-
-			renderTarget.texture.encoding = renderer.outputEncoding;
-
 			// scope.visible = false;
 
 			const currentRenderTarget = renderer.getRenderTarget();
@@ -245,9 +236,9 @@ class ReflectorForSSRPass extends Mesh {
 
 }
 
-ReflectorForSSRPass.prototype.isReflectorForSSRPass = true;
-
 ReflectorForSSRPass.ReflectorShader = {
+
+	name: 'ReflectorShader',
 
 	defines: {
 		DISTANCE_ATTENUATION: true,

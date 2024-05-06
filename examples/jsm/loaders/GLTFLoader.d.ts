@@ -3,20 +3,24 @@ import {
     BufferAttribute,
     BufferGeometry,
     Camera,
+    FileLoader,
     Group,
+    ImageBitmapLoader,
     InterleavedBufferAttribute,
     Loader,
     LoadingManager,
+    Material,
     Mesh,
     MeshStandardMaterial,
     Object3D,
-    Material,
+    Skeleton,
     SkinnedMesh,
     Texture,
-} from '../../../src/Three';
+    TextureLoader,
+} from "three";
 
-import { DRACOLoader } from './DRACOLoader';
-import { KTX2Loader } from './KTX2Loader';
+import { DRACOLoader } from "./DRACOLoader.js";
+import { KTX2Loader } from "./KTX2Loader.js";
 
 export interface GLTF {
     animations: AnimationClip[];
@@ -32,20 +36,12 @@ export interface GLTF {
         extras?: any;
     };
     parser: GLTFParser;
-    userData: any;
+    userData: Record<string, any>;
 }
 
-export class GLTFLoader extends Loader {
+export class GLTFLoader extends Loader<GLTF> {
     constructor(manager?: LoadingManager);
     dracoLoader: DRACOLoader | null;
-
-    load(
-        url: string,
-        onLoad: (gltf: GLTF) => void,
-        onProgress?: (event: ProgressEvent) => void,
-        onError?: (event: ErrorEvent) => void,
-    ): void;
-    loadAsync(url: string, onProgress?: (event: ProgressEvent) => void): Promise<GLTF>;
 
     setDRACOLoader(dracoLoader: DRACOLoader): GLTFLoader;
 
@@ -61,9 +57,11 @@ export class GLTFLoader extends Loader {
         onLoad: (gltf: GLTF) => void,
         onError?: (event: ErrorEvent) => void,
     ): void;
+
+    parseAsync(data: ArrayBuffer | string, path: string): Promise<GLTF>;
 }
 
-export type GLTFReferenceType = 'materials' | 'nodes' | 'textures' | 'meshes';
+export type GLTFReferenceType = "materials" | "nodes" | "textures" | "meshes";
 
 export interface GLTFReference {
     materials?: number;
@@ -75,7 +73,25 @@ export interface GLTFReference {
 export class GLTFParser {
     json: any;
 
+    options: {
+        path: string;
+        manager: LoadingManager;
+        ktx2Loader: KTX2Loader;
+        meshoptDecoder: /* MeshoptDecoder */ any;
+        crossOrigin: string;
+        requestHeader: { [header: string]: string };
+    };
+
+    fileLoader: FileLoader;
+    textureLoader: TextureLoader | ImageBitmapLoader;
+    plugins: { [name: string]: GLTFLoaderPlugin };
+    extensions: { [name: string]: any };
     associations: Map<Object3D | Material | Texture, GLTFReference>;
+
+    setExtensions(extensions: { [name: string]: any }): void;
+    setPlugins(plugins: { [name: string]: GLTFLoaderPlugin }): void;
+
+    parse(onLoad: (gltf: GLTF) => void, onError?: (event: ErrorEvent) => void): void;
 
     getDependency: (type: string, index: number) => Promise<any>;
     getDependencies: (type: string) => Promise<any[]>;
@@ -83,15 +99,8 @@ export class GLTFParser {
     loadBufferView: (bufferViewIndex: number) => Promise<ArrayBuffer>;
     loadAccessor: (accessorIndex: number) => Promise<BufferAttribute | InterleavedBufferAttribute>;
     loadTexture: (textureIndex: number) => Promise<Texture>;
-    loadTextureImage: (
-        textureIndex: number,
-        /**
-         * GLTF.Image
-         * See: https://github.com/KhronosGroup/glTF/blob/master/specification/2.0/schema/image.schema.json
-         */
-        source: { [key: string]: any },
-        loader: Loader,
-    ) => Promise<Texture>;
+    loadTextureImage: (textureIndex: number, sourceIndex: number, loader: Loader) => Promise<Texture>;
+    loadImageSource: (sourceIndex: number, loader: Loader) => Promise<Texture>;
     assignTexture: (
         materialParams: { [key: string]: any },
         mapName: string,
@@ -115,18 +124,17 @@ export class GLTFParser {
     ) => Promise<BufferGeometry[]>;
     loadMesh: (meshIndex: number) => Promise<Group | Mesh | SkinnedMesh>;
     loadCamera: (cameraIndex: number) => Promise<Camera>;
-    loadSkin: (skinIndex: number) => Promise<{
-        joints: number[];
-        inverseBindMatrices?: BufferAttribute | InterleavedBufferAttribute | undefined;
-    }>;
+    loadSkin: (skinIndex: number) => Promise<Skeleton>;
     loadAnimation: (animationIndex: number) => Promise<AnimationClip>;
     loadNode: (nodeIndex: number) => Promise<Object3D>;
     loadScene: () => Promise<Group>;
 }
 
 export interface GLTFLoaderPlugin {
+    readonly name: string;
     beforeRoot?: (() => Promise<void> | null) | undefined;
     afterRoot?: ((result: GLTF) => Promise<void> | null) | undefined;
+    loadNode?: ((nodeIndex: number) => Promise<Object3D> | null) | undefined;
     loadMesh?: ((meshIndex: number) => Promise<Group | Mesh | SkinnedMesh> | null) | undefined;
     loadBufferView?: ((bufferViewIndex: number) => Promise<ArrayBuffer> | null) | undefined;
     loadMaterial?: ((materialIndex: number) => Promise<Material> | null) | undefined;
@@ -135,5 +143,6 @@ export interface GLTFLoaderPlugin {
     extendMaterialParams?:
         | ((materialIndex: number, materialParams: { [key: string]: any }) => Promise<any> | null)
         | undefined;
+    createNodeMesh?: ((nodeIndex: number) => Promise<Group | Mesh | SkinnedMesh> | null) | undefined;
     createNodeAttachment?: ((nodeIndex: number) => Promise<Object3D> | null) | undefined;
 }

@@ -9,6 +9,8 @@ import { Vector2 } from '../../../build/three.module.js';
 
 const SobelOperatorShader = {
 
+	name: 'SobelOperatorShader',
+
 	uniforms: {
 
 		'tDiffuse': { value: null },

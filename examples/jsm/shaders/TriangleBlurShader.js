@@ -12,6 +12,8 @@ import { Vector2 } from '../../../build/three.module.js';
 
 const TriangleBlurShader = {
 
+	name: 'TriangleBlurShader',
+
 	uniforms: {
 
 		'texture': { value: null },

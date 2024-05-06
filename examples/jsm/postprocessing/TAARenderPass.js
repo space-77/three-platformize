@@ -1,4 +1,4 @@
-import { WebGLRenderTarget } from '../../../build/three.module.js';
+import { WebGLRenderTarget, HalfFloatType } from '../../../build/three.module.js';
 import { SSAARenderPass } from './SSAARenderPass.js';
 
 /**
@@ -21,12 +21,13 @@ class TAARenderPass extends SSAARenderPass {
 
 		this.sampleLevel = 0;
 		this.accumulate = false;
+		this.accumulateIndex = - 1;
 
 	}
 
 	render( renderer, writeBuffer, readBuffer, deltaTime ) {
 
-		if ( ! this.accumulate ) {
+		if ( this.accumulate === false ) {
 
 			super.render( renderer, writeBuffer, readBuffer, deltaTime );
 
@@ -37,21 +38,21 @@ class TAARenderPass extends SSAARenderPass {
 
 		const jitterOffsets = _JitterVectors[ 5 ];
 
-		if ( ! this.sampleRenderTarget ) {
+		if ( this.sampleRenderTarget === undefined ) {
 
-			this.sampleRenderTarget = new WebGLRenderTarget( readBuffer.width, readBuffer.height, this.params );
+			this.sampleRenderTarget = new WebGLRenderTarget( readBuffer.width, readBuffer.height, { type: HalfFloatType } );
 			this.sampleRenderTarget.texture.name = 'TAARenderPass.sample';
 
 		}
 
-		if ( ! this.holdRenderTarget ) {
+		if ( this.holdRenderTarget === undefined ) {
 
-			this.holdRenderTarget = new WebGLRenderTarget( readBuffer.width, readBuffer.height, this.params );
+			this.holdRenderTarget = new WebGLRenderTarget( readBuffer.width, readBuffer.height, { type: HalfFloatType } );
 			this.holdRenderTarget.texture.name = 'TAARenderPass.hold';
 
 		}
 
-		if ( this.accumulate && this.accumulateIndex === - 1 ) {
+		if ( this.accumulateIndex === - 1 ) {
 
 			super.render( renderer, this.holdRenderTarget, readBuffer, deltaTime );
 
@@ -61,6 +62,9 @@ class TAARenderPass extends SSAARenderPass {
 
 		const autoClear = renderer.autoClear;
 		renderer.autoClear = false;
+
+		renderer.getClearColor( this._oldClearColor );
+		const oldClearAlpha = renderer.getClearAlpha();
 
 		const sampleWeight = 1.0 / ( jitterOffsets.length );
 
@@ -85,11 +89,18 @@ class TAARenderPass extends SSAARenderPass {
 				}
 
 				renderer.setRenderTarget( writeBuffer );
+				renderer.setClearColor( this.clearColor, this.clearAlpha );
 				renderer.clear();
 				renderer.render( this.scene, this.camera );
 
 				renderer.setRenderTarget( this.sampleRenderTarget );
-				if ( this.accumulateIndex === 0 ) renderer.clear();
+				if ( this.accumulateIndex === 0 ) {
+
+					renderer.setClearColor( 0x000000, 0.0 );
+					renderer.clear();
+
+				}
+
 				this.fsQuad.render( renderer );
 
 				this.accumulateIndex ++;
@@ -102,6 +113,7 @@ class TAARenderPass extends SSAARenderPass {
 
 		}
 
+		renderer.setClearColor( this.clearColor, this.clearAlpha );
 		const accumulationWeight = this.accumulateIndex * sampleWeight;
 
 		if ( accumulationWeight > 0 ) {
@@ -119,12 +131,20 @@ class TAARenderPass extends SSAARenderPass {
 			this.copyUniforms[ 'opacity' ].value = 1.0 - accumulationWeight;
 			this.copyUniforms[ 'tDiffuse' ].value = this.holdRenderTarget.texture;
 			renderer.setRenderTarget( writeBuffer );
-			if ( accumulationWeight === 0 ) renderer.clear();
 			this.fsQuad.render( renderer );
 
 		}
 
 		renderer.autoClear = autoClear;
+		renderer.setClearColor( this._oldClearColor, oldClearAlpha );
+
+	}
+
+	dispose() {
+
+		super.dispose();
+
+		if ( this.holdRenderTarget ) this.holdRenderTarget.dispose();
 
 	}
 
